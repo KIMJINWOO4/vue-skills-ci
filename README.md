@@ -241,16 +241,6 @@ Silence a single line with a comment above it: `// vue-skills-ci-disable-next-li
 
 [`example/`](example) is a small todo app in the create-vue layout: Vue 3.5, Pinia 4, VueUse 15, Vite 8, Vitest 5 with Vue Test Utils, ESLint with eslint-plugin-vue, and vue-tsc on TypeScript 6. This repository's [CI](.github/workflows/ci.yml) calls the reusable workflow on it for every push and pull request, the same way your project would. If you want to see exactly what the workflow runs, open the latest run of the `Example app` job.
 
-## Badge
-
-If the check runs in your project, you can say so in your README:
-
-[![checked by vue-skills-ci](https://img.shields.io/badge/checked%20by-vue--skills--ci-42b883)](https://github.com/KIMJINWOO4/vue-skills-ci)
-
-```md
-[![checked by vue-skills-ci](https://img.shields.io/badge/checked%20by-vue--skills--ci-42b883)](https://github.com/KIMJINWOO4/vue-skills-ci)
-```
-
 ## Contributing
 
 Rules live in [`src/rules`](src/rules), one object per rule with its reason, fix and guide link. Each rule has a failing and a passing case in [`test/rules.test.mjs`](test/rules.test.mjs).
