@@ -31,8 +31,12 @@ export function summarize(findings) {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
+// Rules that fired, each with the guides of its findings (one rule can point to several guides).
 function hitRules(findings) {
-  return [...new Set(findings.map(f => f.rule))].map(id => ruleById.get(id))
+  return [...new Set(findings.map(f => f.rule))].map(id => ({
+    ...ruleById.get(id),
+    guides: [...new Set(findings.filter(f => f.rule === id).map(f => f.docs))],
+  }))
 }
 
 function wrap(text, width) {
@@ -94,7 +98,8 @@ export function pretty(result, { color = false, version = '', columns = process.
       out.push(`  ${tint[rule.severity](rule.id.padEnd(width))}  ${first}`)
       for (const line of rest)
         out.push(`${indent}${line}`)
-      out.push(`${indent}${c.dim(color ? link(rule.docs, `guide: ${guideLabel(rule.docs)}`) : rule.docs)}`)
+      for (const url of rule.guides)
+        out.push(`${indent}${c.dim(color ? link(url, `guide: ${guideLabel(url)}`) : url)}`)
     }
   }
   if (version)
@@ -112,7 +117,7 @@ export function markdown(result) {
   if (!s.total)
     return `### vue-skills-ci\n\nNo problems found.${s.known ? ` ${plural(s.known, 'known finding')} stay in the baseline.` : ''}\n`
   const rows = active.map(f => `| ${f.severity} | \`${f.file}:${f.line}\` | ${f.message.replace(/\|/g, '\\|')} | [${f.rule}](${f.docs}) |`)
-  const fixes = hitRules(active).map(r => `- **${r.id}**: ${r.fix} [Guide](${r.docs})`)
+  const fixes = hitRules(active).map(r => `- **${r.id}**: ${r.fix} ${r.guides.map(url => `[Guide](${url})`).join(' ')}`)
   return [
     `### vue-skills-ci: ${plural(s.error, 'error')}, ${plural(s.warn, 'warning')}, ${s.info} info`,
     '',

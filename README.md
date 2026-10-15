@@ -40,9 +40,9 @@ That is the whole setup. The workflow reads your repository and runs two jobs in
 
 Script names follow [create-vue](https://github.com/vuejs/create-vue), so a freshly scaffolded app works without changes. A step whose script does not exist is skipped, not failed.
 
-![The example app passing the reusable workflow](docs/images/workflow-run.png)
+![The example app passing every step of the reusable workflow](docs/images/workflow-run.png)
 
-<sub>A real run of this repository's CI on the [example app](example).</sub>
+<sub>A real run of this repository's CI: the [example app](example) goes through every step of the reusable workflow in 17 seconds. [Open the run](https://github.com/KIMJINWOO4/vue-skills-ci/actions/runs/38697205118).</sub>
 
 ### Options
 
@@ -78,6 +78,12 @@ steps:
 ```
 
 The action takes `path`, `fail-on`, `baseline` and `sarif` inputs. `npx -y github:KIMJINWOO4/vue-skills-ci init --rules-only` writes this workflow.
+
+Each finding becomes an annotation with the reason, the fix and a link to the guide:
+
+![Rule findings shown as annotations on a GitHub Actions run](docs/images/annotations.png)
+
+<sub>The rule check on [fixtures/upgrade-traps](fixtures/upgrade-traps) in this repository's CI. On a pull request the same messages also appear inline on the changed lines.</sub>
 
 To see the findings in the repository's Security tab as well, write SARIF and upload it:
 
