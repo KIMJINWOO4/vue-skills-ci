@@ -11,7 +11,7 @@ export default [
   {
     id: 'vapor-event-delegation-option',
     severity: 'error',
-    category: 'vue',
+    category: 'vapor',
     title: 'Removed Vapor eventDelegation compiler option',
     why: 'Vue 3.6.0-rc.2 made Vapor event delegation opt-in per listener and removed compilerOptions.eventDelegation.',
     fix: 'Delete the option. Add the .delegate modifier (for example @click.delegate) to listeners that should delegate to document.',

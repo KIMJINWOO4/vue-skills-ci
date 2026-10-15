@@ -5,21 +5,27 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { rulesTable } from '../src/report.mjs'
-import { rules } from '../src/rules/index.mjs'
+import { GROUPS, ruleById, rulesInGroup } from '../src/rules/index.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-const detail = rules.map(r => [
-  `## ${r.id}`,
+const detail = Object.entries(GROUPS).map(([group, about]) => [
+  `## ${group}`,
   '',
-  `Default severity: **${r.severity}**. Area: ${r.category}.`,
+  `${about}. Select with \`--rules ${group}\` or \`rules: ${group}\`.`,
   '',
-  `**Why.** ${r.why}`,
-  '',
-  `**Fix.** ${r.fix}`,
-  '',
-  `Guide: ${r.docs}`,
-  '',
+  ...rulesInGroup(group).map(id => ruleById.get(id)).map(r => [
+    `### ${r.id}`,
+    '',
+    `Default severity: **${r.severity}**.`,
+    '',
+    `**Why.** ${r.why}`,
+    '',
+    `**Fix.** ${r.fix}`,
+    '',
+    `Guide: ${r.docs}`,
+    '',
+  ].join('\n')),
 ].join('\n')).join('\n')
 
 const page = `# Rules\n\nGenerated from \`src/rules\` by \`node scripts/gen-docs.mjs\`.\n\n${rulesTable('markdown')}\n${detail}`
@@ -34,4 +40,4 @@ const readme = readFileSync(readmePath, 'utf8')
 const re = /(<!-- rules:start -->)[\s\S]*?(<!-- rules:end -->)/
 if (re.test(readme))
   writeFileSync(readmePath, readme.replace(re, `$1\n${rulesTable('markdown')}$2`))
-console.log(`Documented ${rules.length} rules`)
+console.log(`Documented ${ruleById.size} rules in ${Object.keys(GROUPS).length} groups`)

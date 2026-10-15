@@ -38,9 +38,13 @@ on:
         type: boolean
         default: true
       rules:
-        description: Run the vue-skills-ci rule check
-        type: boolean
-        default: true
+        description: Rule groups or ids to run, comma separated (toolchain, testing, vapor, vue, nuxt, security), "all" or "none"
+        type: string
+        default: all
+      skip-rules:
+        description: Rule groups or ids to leave out, comma separated
+        type: string
+        default: ''
       fail-on:
         description: Lowest rule severity that fails the check (error, warn, info or never)
         type: string
@@ -154,7 +158,7 @@ jobs:
 
   rules:
     name: Vue rules
-    if: inputs.rules
+    if: inputs.rules != 'none'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -171,7 +175,11 @@ jobs:
           APP_DIR: ${{ inputs.working-directory }}
           FAIL_ON: ${{ inputs.fail-on }}
           BASELINE: ${{ inputs.baseline }}
+          RULES: ${{ inputs.rules }}
+          SKIP_RULES: ${{ inputs.skip-rules }}
         run: |
           args=(check "$APP_DIR" --format github --fail-on "$FAIL_ON")
+          if [ -n "$RULES" ] && [ "$RULES" != "all" ]; then args+=(--rules "$RULES"); fi
+          if [ -n "$SKIP_RULES" ]; then args+=(--skip-rules "$SKIP_RULES"); fi
           if [ -n "$BASELINE" ]; then args+=(--baseline "$BASELINE"); fi
           node .vue-skills-ci/src/cli.mjs "${args[@]}"

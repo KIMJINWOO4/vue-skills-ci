@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { lineCol, scriptView, sfcBlocks, templateView } from './code.mjs'
 import { CONFIG_FILE, loadProject, SOURCE_EXT } from './project.mjs'
-import { rules } from './rules/index.mjs'
+import { rules, selectRules } from './rules/index.mjs'
 
 export const SEVERITIES = ['info', 'warn', 'error']
 export const CONFIG_NAME = 'vue-skills-ci.config.json'
@@ -12,7 +12,7 @@ export function loadConfig(root) {
   if (!existsSync(path))
     return { rules: {}, ignore: [] }
   const config = JSON.parse(readFileSync(path, 'utf8'))
-  return { rules: config.rules ?? {}, ignore: config.ignore ?? [] }
+  return { include: config.include, exclude: config.exclude, rules: config.rules ?? {}, ignore: config.ignore ?? [] }
 }
 
 function memo(fn) {
@@ -36,8 +36,10 @@ function isSuppressed(lines, line, ruleId) {
   return check(lines[line - 1], 'vue-skills-ci-disable-line') || check(lines[line - 2], 'vue-skills-ci-disable-next-line')
 }
 
-export function run(root, { only } = {}) {
+// `include` and `exclude` take group names or rule ids. When given, they replace the config file's lists.
+export function run(root, { include, exclude } = {}) {
   const config = loadConfig(root)
+  const selected = selectRules({ include: include ?? config.include, exclude: exclude ?? config.exclude })
   const project = loadProject(root, { ignore: config.ignore })
   const ctx = {
     project,
@@ -51,7 +53,7 @@ export function run(root, { only } = {}) {
 
   const findings = []
   for (const rule of rules) {
-    if (only && !only.includes(rule.id))
+    if (!selected.has(rule.id))
       continue
     const setting = config.rules[rule.id]
     if (setting === 'off')
@@ -78,5 +80,5 @@ export function run(root, { only } = {}) {
   }
 
   findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.column - b.column)
-  return { root, files: project.files.length, findings }
+  return { root, files: project.files.length, findings, rules: [...selected] }
 }

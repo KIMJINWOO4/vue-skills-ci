@@ -54,6 +54,7 @@ jobs:
       working-directory: apps/web   # monorepo: the folder with the app's package.json
       node-version: '22'
       test: false                   # skip a step
+      rules: toolchain,security     # run only these rule groups
       fail-on: warn                 # make rule warnings fail the check too
       baseline: .vue-skills-ci-baseline.json
 ```
@@ -63,7 +64,8 @@ jobs:
 | `working-directory` | `.` | Folder with the app's `package.json`. The lockfile is found by walking up, so workspaces work. |
 | `node-version` | `24` | Node.js version for install, lint, test and build. |
 | `lint`, `typecheck`, `test`, `build` | `true` | Turn a step off. |
-| `rules` | `true` | Turn the rule check off. |
+| `rules` | `all` | Rule groups or ids to run, comma separated. `none` turns the rule job off. See [Choose which rules run](#choose-which-rules-run). |
+| `skip-rules` | | Rule groups or ids to leave out. |
 | `fail-on` | `error` | Lowest rule severity that fails the check: `error`, `warn`, `info` or `never`. |
 | `baseline` | | File of known findings to ignore (see [Existing projects](#existing-projects)). |
 
@@ -77,7 +79,7 @@ steps:
   - uses: KIMJINWOO4/vue-skills-ci@v1
 ```
 
-The action takes `path`, `fail-on`, `baseline` and `sarif` inputs. `npx -y github:KIMJINWOO4/vue-skills-ci init --rules-only` writes this workflow.
+The action takes `rules`, `skip-rules`, `path`, `fail-on`, `baseline` and `sarif` inputs. `npx -y github:KIMJINWOO4/vue-skills-ci init --rules-only` writes this workflow.
 
 Each finding becomes an annotation with the reason, the fix and a link to the guide:
 
@@ -123,30 +125,71 @@ npx skills add KIMJINWOO4/vue-skills-ci
 
 Install [vue-skills](https://github.com/KIMJINWOO4/vue-skills) as well and the agent reads the guides from disk instead of the web.
 
+## Choose which rules run
+
+All 19 rules run by default. Most projects only need some of them, so the rules come in six groups:
+
+| Group | Turn it on when | Rules |
+|-------|-----------------|-------|
+| `toolchain` | Always. Catches broken version combinations before they break the build. | 5 |
+| `testing` | The project uses Vitest 4 or 5. | 4 |
+| `vapor` | The project tries Vue 3.6 Vapor Mode. | 3 |
+| `vue` | The project uses VueUse, Vue Router or Pinia. | 4 |
+| `nuxt` | Nuxt with server rendering. Skipped automatically when `ssr: false`. | 2 |
+| `security` | Always. Finds secrets that would ship to the browser. | 1 |
+
+Rules also stay quiet when they cannot apply: the Vitest rules need Vitest 4 or newer, the Nuxt rules need Nuxt, and the Vapor rules only look at Vapor components. So choosing groups mostly decides how much the team wants enforced.
+
+Pick groups, single rules, or both. The same names work everywhere:
+
+```yaml
+# reusable workflow or action
+with:
+  rules: toolchain,security,testing
+  skip-rules: prerelease-core-dependency
+```
+
+```bash
+# command line
+npx -y github:KIMJINWOO4/vue-skills-ci check --rules toolchain,security
+npx -y github:KIMJINWOO4/vue-skills-ci rules          # list groups and rules
+```
+
+The same choice can live in `vue-skills-ci.config.json`, which the CLI, the action and the workflow all read:
+
+```json
+{
+  "include": ["toolchain", "security", "testing"],
+  "exclude": ["prerelease-core-dependency"]
+}
+```
+
+When the workflow or the command line sets `rules` or `skip-rules`, that value replaces the matching list in the config file. Run `init` in a terminal and it asks which groups you want, then writes them into the workflow file.
+
 ## What the rules check
 
 <!-- rules:start -->
-| Rule | Default | Area | Catches |
-|------|---------|------|---------|
-| [`typescript7-with-vue-tsc`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/build-tooling/references/typescript-7.md) | error | toolchain | vue-tsc running on TypeScript 7 |
-| [`missing-required-peer`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/pinia-4.md) | warn | toolchain | Required peer dependency not declared |
-| [`end-of-life-framework`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/SKILL.md) | warn | toolchain | Framework version past end of life |
-| [`prerelease-core-dependency`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/versions.md) | info | toolchain | Core package on a pre-release |
-| [`vapor-event-delegation-option`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | error | vue | Removed Vapor eventDelegation compiler option |
-| [`vitest-removed-config`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | testing | Vitest config option that no longer exists |
-| [`vite8-legacy-options`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vite-8.md) | warn | toolchain | Vite 7 option names in a Vite 8 config |
-| [`vitest-artifacts-not-ignored`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | info | testing | .vitest output folder not in .gitignore |
-| [`vapor-without-script-setup`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | error | vue | Vapor component without script setup |
-| [`vapor-unsupported-feature`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | warn | vue | Feature that Vapor Mode does not support |
-| [`vueuse-templateref-removed`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vueuse-15.md) | error | vue | templateRef imported from VueUse |
-| [`vueuse-removed-timer-options`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vueuse-15.md) | error | vue | VueUse timer option removed in v15 |
-| [`vitest-sequential-removed`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | testing | .sequential test modifier |
-| [`vitest-hoisted-not-top-level`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | testing | vi.mock, vi.unmock or vi.hoisted below the top level |
-| [`router-guard-next-callback`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/router/router-navigation-guard-next-deprecated.md) | warn | vue | Navigation guard using next() |
-| [`public-env-secret`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-review/references/checklist.md) | error | security | Secret exposed through a public env variable |
-| [`ssr-module-level-state`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-debug/references/guides/state-ssr-cross-request-pollution.md) | warn | nuxt | Module-level reactive state in a Nuxt composable |
-| [`nuxt-fetch-in-setup`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/nuxt/references/docs/core-data-fetching.md) | warn | nuxt | $fetch at the top level of script setup |
-| [`pinia-store-destructure`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/pinia-gotchas/pinia-store-destructuring-breaks-reactivity.md) | warn | vue | Pinia store destructured without storeToRefs |
+| Group | Rule | Default | Catches |
+|-------|------|---------|---------|
+| **toolchain** | [`typescript7-with-vue-tsc`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/build-tooling/references/typescript-7.md) | error | vue-tsc running on TypeScript 7 |
+|  | [`missing-required-peer`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/pinia-4.md) | warn | Required peer dependency not declared |
+|  | [`end-of-life-framework`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/SKILL.md) | warn | Framework version past end of life |
+|  | [`prerelease-core-dependency`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/versions.md) | info | Core package on a pre-release |
+|  | [`vite8-legacy-options`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vite-8.md) | warn | Vite 7 option names in a Vite 8 config |
+| **testing** | [`vitest-removed-config`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | Vitest config option that no longer exists |
+|  | [`vitest-artifacts-not-ignored`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | info | .vitest output folder not in .gitignore |
+|  | [`vitest-sequential-removed`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | .sequential test modifier |
+|  | [`vitest-hoisted-not-top-level`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vitest-5.md) | error | vi.mock, vi.unmock or vi.hoisted below the top level |
+| **vapor** | [`vapor-event-delegation-option`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | error | Removed Vapor eventDelegation compiler option |
+|  | [`vapor-without-script-setup`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | error | Vapor component without script setup |
+|  | [`vapor-unsupported-feature`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/vue-36-vapor.md) | warn | Feature that Vapor Mode does not support |
+| **vue** | [`vueuse-templateref-removed`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vueuse-15.md) | error | templateRef imported from VueUse |
+|  | [`vueuse-removed-timer-options`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-upgrade/references/vueuse-15.md) | error | VueUse timer option removed in v15 |
+|  | [`router-guard-next-callback`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/router/router-navigation-guard-next-deprecated.md) | warn | Navigation guard using next() |
+|  | [`pinia-store-destructure`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue/references/pinia-gotchas/pinia-store-destructuring-breaks-reactivity.md) | warn | Pinia store destructured without storeToRefs |
+| **nuxt** | [`ssr-module-level-state`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-debug/references/guides/state-ssr-cross-request-pollution.md) | warn | Module-level reactive state in a Nuxt composable |
+|  | [`nuxt-fetch-in-setup`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/nuxt/references/docs/core-data-fetching.md) | warn | $fetch at the top level of script setup |
+| **security** | [`public-env-secret`](https://github.com/KIMJINWOO4/vue-skills/blob/main/skills/vue-review/references/checklist.md) | error | Secret exposed through a public env variable |
 <!-- rules:end -->
 
 Details for each rule, with the reason and the fix: [docs/rules.md](docs/rules.md).
@@ -165,17 +208,21 @@ Commit the file and pass it as `baseline`. Findings are matched by rule, file an
 
 ## Configuration
 
-Turn rules off or change their severity in `vue-skills-ci.config.json` at the project root:
+Everything lives in `vue-skills-ci.config.json` at the project root:
 
 ```json
 {
+  "include": ["toolchain", "security", "vue"],
+  "exclude": ["pinia-store-destructure"],
   "rules": {
-    "pinia-store-destructure": "off",
-    "prerelease-core-dependency": "warn"
+    "prerelease-core-dependency": "warn",
+    "router-guard-next-callback": "error"
   },
   "ignore": ["legacy/**"]
 }
 ```
+
+`include` and `exclude` choose rules, `rules` changes a rule's severity (`error`, `warn`, `info` or `off`), and `ignore` skips paths.
 
 Silence a single line with a comment above it: `// vue-skills-ci-disable-next-line ssr-module-level-state`. `node_modules`, `dist`, `.nuxt`, `.output`, `public` and files over 1 MB are always skipped.
 

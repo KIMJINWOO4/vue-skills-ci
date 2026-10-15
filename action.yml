@@ -6,6 +6,12 @@ branding:
   color: green
 
 inputs:
+  rules:
+    description: Groups or rule ids to run, comma separated (toolchain, testing, vapor, vue, nuxt, security). Default all
+    default: all
+  skip-rules:
+    description: Groups or rule ids to leave out, comma separated
+    default: ''
   path:
     description: Directory to check, relative to the repository root
     default: .
@@ -29,8 +35,12 @@ runs:
         FAIL_ON: ${{ inputs.fail-on }}
         BASELINE: ${{ inputs.baseline }}
         SARIF: ${{ inputs.sarif }}
+        RULES: ${{ inputs.rules }}
+        SKIP_RULES: ${{ inputs.skip-rules }}
       run: |
         args=(check "$CHECK_PATH" --format github --fail-on "$FAIL_ON")
+        if [ -n "$RULES" ] && [ "$RULES" != "all" ]; then args+=(--rules "$RULES"); fi
+        if [ -n "$SKIP_RULES" ]; then args+=(--skip-rules "$SKIP_RULES"); fi
         if [ -n "$BASELINE" ]; then args+=(--baseline "$BASELINE"); fi
         if [ -n "$SARIF" ]; then args+=(--sarif "$SARIF"); fi
         node "$GITHUB_ACTION_PATH/src/cli.mjs" "${args[@]}"

@@ -15,7 +15,7 @@ export function project(files) {
 }
 
 export function findings(files, rule) {
-  return run(project(files), { only: rule ? [rule] : undefined }).findings
+  return run(project(files), { include: rule }).findings
 }
 
 export const pkg = (deps = {}, devDeps = {}) => ({ name: 'app', dependencies: deps, devDependencies: devDeps })

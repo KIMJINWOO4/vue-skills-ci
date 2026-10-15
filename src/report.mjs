@@ -1,5 +1,5 @@
 import { fingerprint } from './baseline.mjs'
-import { ruleById, rules } from './rules/index.mjs'
+import { GROUPS, ruleById, rules, rulesInGroup } from './rules/index.mjs'
 
 const LABEL = { error: 'error', warn: 'warn', info: 'info' }
 
@@ -188,6 +188,9 @@ export function sarif(result, { version = '' } = {}) {
 export function rulesTable(format) {
   if (format === 'json')
     return `${JSON.stringify(rules.map(({ check, ...meta }) => meta), null, 2)}\n`
-  const rows = rules.map(r => `| [\`${r.id}\`](${r.docs}) | ${r.severity} | ${r.category} | ${r.title} |`)
-  return ['| Rule | Default | Area | Catches |', '|------|---------|------|---------|', ...rows, ''].join('\n')
+  const rows = Object.keys(GROUPS).flatMap(group => rulesInGroup(group).map((id, i) => {
+    const r = ruleById.get(id)
+    return `| ${i === 0 ? `**${group}**` : ''} | [\`${r.id}\`](${r.docs}) | ${r.severity} | ${r.title} |`
+  }))
+  return ['| Group | Rule | Default | Catches |', '|-------|------|---------|---------|', ...rows, ''].join('\n')
 }

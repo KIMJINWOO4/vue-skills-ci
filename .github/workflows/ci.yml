@@ -40,3 +40,22 @@ jobs:
         with:
           path: fixtures/upgrade-traps
           fail-on: never
+
+  # The same action with a narrowed selection: only the toolchain and security groups,
+  # minus one rule. The step fails if the selection lets a testing rule through.
+  fixture-selected:
+    name: Rule selection on fixtures/upgrade-traps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./
+        with:
+          path: fixtures/upgrade-traps
+          rules: toolchain,security
+          skip-rules: missing-required-peer
+          fail-on: never
+      - name: Only the selected rules ran
+        run: |
+          hits=$(node src/cli.mjs check fixtures/upgrade-traps --rules toolchain,security --skip-rules missing-required-peer --format json --fail-on never | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log([...new Set(JSON.parse(s).findings.map(f=>f.rule))].sort().join(",")))')
+          echo "rules hit: $hits"
+          test "$hits" = "public-env-secret,typescript7-with-vue-tsc"

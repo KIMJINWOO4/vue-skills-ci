@@ -236,3 +236,18 @@ describe('engine', () => {
     assert.deepEqual(findings({ 'node_modules/x/a.js': bad, 'dist/a.js': bad, 'public/a.js': bad }), [])
   })
 })
+
+describe('selectRules', async () => {
+  const { GROUPS, rulesInGroup, selectRules } = await import('../src/rules/index.mjs')
+  it('puts every rule in exactly one known group', () => {
+    const grouped = Object.keys(GROUPS).flatMap(rulesInGroup)
+    assert.equal(grouped.length, new Set(grouped).size)
+    assert.equal(grouped.length, selectRules().size)
+  })
+  it('handles all, none, groups, ids and exclusions', () => {
+    assert.equal(selectRules({ include: 'all' }).size, 19)
+    assert.equal(selectRules({ include: 'none' }).size, 0)
+    assert.deepEqual([...selectRules({ include: 'nuxt' })].sort(), ['nuxt-fetch-in-setup', 'ssr-module-level-state'])
+    assert.equal(selectRules({ exclude: 'testing,vapor' }).size, 12)
+  })
+})

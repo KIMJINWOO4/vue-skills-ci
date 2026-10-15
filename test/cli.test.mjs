@@ -92,3 +92,40 @@ describe('detect', () => {
     assert.equal(info.test, '')
   })
 })
+
+describe('choosing rules', () => {
+  const traps = () => project({
+    'package.json': pkg({ pinia: '^4.1.0' }, { 'typescript': '^7.0.2', 'vue-tsc': '^3.3.13' }),
+    '.env': 'VITE_STRIPE_SECRET=sk_live\n',
+  })
+  const rulesHit = (...args) => [...new Set(JSON.parse(exec('check', ...args, '--format', 'json', '--fail-on', 'never').stdout).findings.map(f => f.rule))].sort()
+
+  it('runs only the chosen groups', () => {
+    assert.deepEqual(rulesHit(traps(), '--rules', 'security'), ['public-env-secret'])
+  })
+  it('mixes groups and rule ids, and skips what is listed', () => {
+    assert.deepEqual(rulesHit(traps(), '--rules', 'security,toolchain', '--skip-rules', 'missing-required-peer'), ['public-env-secret', 'typescript7-with-vue-tsc'])
+  })
+  it('rejects unknown names with exit code 2', () => {
+    const res = exec('check', traps(), '--rules', 'secruity')
+    assert.equal(res.status, 2)
+    assert.match(res.stderr, /Groups: toolchain, testing, vapor, vue, nuxt, security/)
+  })
+  it('reads include and exclude from the config file, and flags override it', () => {
+    const root = traps()
+    writeFileSync(join(root, 'vue-skills-ci.config.json'), JSON.stringify({ include: ['toolchain'], exclude: ['missing-required-peer'] }))
+    assert.deepEqual(rulesHit(root), ['typescript7-with-vue-tsc'])
+    assert.deepEqual(rulesHit(root, '--rules', 'security'), ['public-env-secret'])
+  })
+  it('writes the chosen rules into the workflow', () => {
+    const root = project({ 'package.json': pkg() })
+    exec('init', root, '--rules', 'security,toolchain', '--skip-rules', 'prerelease-core-dependency')
+    const yml = readFileSync(join(root, '.github/workflows/vue-ci.yml'), 'utf8')
+    assert.match(yml, /with:\n {6}rules: security,toolchain\n {6}skip-rules: prerelease-core-dependency\n/)
+  })
+  it('omits the with block when every rule runs', () => {
+    const root = project({ 'package.json': pkg() })
+    exec('init', root, '--yes')
+    assert.doesNotMatch(readFileSync(join(root, '.github/workflows/vue-ci.yml'), 'utf8'), /with:/)
+  })
+})

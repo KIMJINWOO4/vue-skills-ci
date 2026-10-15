@@ -1,6 +1,6 @@
 {
   "name": "vue-skills-ci",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "CI rules distilled from vue-skills: catch Vue, Nuxt and toolchain upgrade traps, SSR state leaks and exposed secrets in pull requests",
   "type": "module",
   "license": "MIT",

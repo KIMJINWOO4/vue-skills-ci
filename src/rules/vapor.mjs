@@ -16,7 +16,7 @@ export default [
   {
     id: 'vapor-without-script-setup',
     severity: 'error',
-    category: 'vue',
+    category: 'vapor',
     title: 'Vapor component without script setup',
     why: 'Vapor Mode supports script setup and template-only components, not the Options API. Since Vue 3.6.0-rc.11 a Vapor SFC whose script is a plain script block fails to compile.',
     fix: 'Move the component to <script setup vapor>, or remove the vapor marker.',
@@ -37,7 +37,7 @@ export default [
   {
     id: 'vapor-unsupported-feature',
     severity: 'warn',
-    category: 'vue',
+    category: 'vapor',
     title: 'Feature that Vapor Mode does not support',
     why: 'Vapor Mode supports a subset of Vue. v-memo, @vue:* element hooks, getCurrentInstance(), globalProperties and the $el family on component refs do not work inside Vapor components.',
     fix: 'Rewrite the part without the feature, or keep this component in VDOM mode behind vaporInteropPlugin.',
