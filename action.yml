@@ -1,0 +1,36 @@
+name: vue-skills-ci
+description: Check a Vue or Nuxt project for upgrade traps, toolchain mismatches, SSR state leaks and exposed secrets
+author: Jinwoo Kim
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  path:
+    description: Directory to check, relative to the repository root
+    default: .
+  fail-on:
+    description: Lowest severity that fails the step (error, warn, info or never)
+    default: error
+  baseline:
+    description: Baseline file of known findings to ignore (create it with --update-baseline)
+    default: ''
+  sarif:
+    description: Also write a SARIF report to this path, for github/codeql-action/upload-sarif
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Check Vue rules
+      shell: bash
+      env:
+        CHECK_PATH: ${{ inputs.path }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        BASELINE: ${{ inputs.baseline }}
+        SARIF: ${{ inputs.sarif }}
+      run: |
+        args=(check "$CHECK_PATH" --format github --fail-on "$FAIL_ON")
+        if [ -n "$BASELINE" ]; then args+=(--baseline "$BASELINE"); fi
+        if [ -n "$SARIF" ]; then args+=(--sarif "$SARIF"); fi
+        node "$GITHUB_ACTION_PATH/src/cli.mjs" "${args[@]}"

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --test test/*.test.mjs
+
+  # The example app goes through the same reusable workflow a user would call.
+  example:
+    name: Example app
+    uses: ./.github/workflows/vue-ci.yml
+    with:
+      working-directory: example
+      rules-ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+  # The composite action on a folder full of known problems. It must report them and not fail.
+  fixture:
+    name: Rules on fixtures/upgrade-traps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./
+        with:
+          path: fixtures/upgrade-traps
+          fail-on: never

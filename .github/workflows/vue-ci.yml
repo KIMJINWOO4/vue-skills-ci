@@ -1,0 +1,177 @@
+name: Vue CI
+
+# Reusable workflow. Call it from your repository:
+#
+#   jobs:
+#     vue:
+#       uses: KIMJINWOO4/vue-skills-ci/.github/workflows/vue-ci.yml@v1
+#
+# It installs dependencies with the package manager your lockfile belongs to, runs the
+# lint, type-check, test and build scripts that exist in package.json, and checks the
+# vue-skills-ci rules in a parallel job.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Folder that holds the app's package.json
+        type: string
+        default: .
+      node-version:
+        description: Node.js version for install, lint, test and build
+        type: string
+        default: '24'
+      lint:
+        description: Run the lint script if package.json has one
+        type: boolean
+        default: true
+      typecheck:
+        description: Run the typecheck or type-check script if package.json has one
+        type: boolean
+        default: true
+      test:
+        description: Run the test:unit or test script if package.json has one
+        type: boolean
+        default: true
+      build:
+        description: Run the build-only or build script if package.json has one
+        type: boolean
+        default: true
+      rules:
+        description: Run the vue-skills-ci rule check
+        type: boolean
+        default: true
+      fail-on:
+        description: Lowest rule severity that fails the check (error, warn, info or never)
+        type: string
+        default: error
+      baseline:
+        description: Baseline file of known rule findings, relative to the repository root
+        type: string
+        default: ''
+      rules-ref:
+        description: Git ref of vue-skills-ci to run the rules from
+        type: string
+        default: v1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Install, lint, type-check, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Get vue-skills-ci
+        uses: actions/checkout@v7
+        with:
+          repository: KIMJINWOO4/vue-skills-ci
+          ref: ${{ inputs.rules-ref }}
+          path: .vue-skills-ci
+
+      - name: Detect package manager and scripts
+        id: detect
+        env:
+          APP_DIR: ${{ inputs.working-directory }}
+        run: |
+          node .vue-skills-ci/src/cli.mjs detect "$APP_DIR" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Set up pnpm (version from packageManager)
+        if: steps.detect.outputs.pm == 'pnpm' && steps.detect.outputs.pnpm_version == ''
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ${{ steps.detect.outputs.install_dir }}/package.json
+
+      - name: Set up pnpm (latest)
+        if: steps.detect.outputs.pm == 'pnpm' && steps.detect.outputs.pnpm_version != ''
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ steps.detect.outputs.pnpm_version }}
+
+      - name: Set up Bun
+        if: steps.detect.outputs.pm == 'bun'
+        uses: oven-sh/setup-bun@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          # Built-in caching for npm and pnpm. Yarn is enabled through Corepack below, after Node is set up.
+          cache: ${{ (steps.detect.outputs.pm == 'npm' || steps.detect.outputs.pm == 'pnpm') && steps.detect.outputs.lockfile != '' && steps.detect.outputs.pm || '' }}
+          cache-dependency-path: ${{ steps.detect.outputs.lockfile }}
+
+      - name: Enable Corepack for Yarn
+        if: steps.detect.outputs.pm == 'yarn'
+        run: corepack enable
+
+      - name: Install dependencies
+        working-directory: ${{ steps.detect.outputs.install_dir }}
+        env:
+          PM: ${{ steps.detect.outputs.pm }}
+          YARN_BERRY: ${{ steps.detect.outputs.yarn_berry }}
+          LOCKFILE: ${{ steps.detect.outputs.lockfile }}
+        run: |
+          case "$PM" in
+            pnpm) pnpm install --frozen-lockfile ;;
+            bun) bun install --frozen-lockfile ;;
+            yarn) if [ "$YARN_BERRY" = "true" ]; then yarn install --immutable; else yarn install --frozen-lockfile; fi ;;
+            *) if [ -n "$LOCKFILE" ]; then npm ci; else npm install; fi ;;
+          esac
+
+      - name: Lint
+        if: inputs.lint && steps.detect.outputs.lint != ''
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          PM: ${{ steps.detect.outputs.pm }}
+          SCRIPT: ${{ steps.detect.outputs.lint }}
+        run: '"$PM" run "$SCRIPT"'
+
+      - name: Type-check
+        if: inputs.typecheck && steps.detect.outputs.typecheck != ''
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          PM: ${{ steps.detect.outputs.pm }}
+          SCRIPT: ${{ steps.detect.outputs.typecheck }}
+        run: '"$PM" run "$SCRIPT"'
+
+      - name: Test
+        if: inputs.test && steps.detect.outputs.test != ''
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          PM: ${{ steps.detect.outputs.pm }}
+          SCRIPT: ${{ steps.detect.outputs.test }}
+        run: '"$PM" run "$SCRIPT"'
+
+      - name: Build
+        if: inputs.build && steps.detect.outputs.build != ''
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          PM: ${{ steps.detect.outputs.pm }}
+          SCRIPT: ${{ steps.detect.outputs.build }}
+        run: '"$PM" run "$SCRIPT"'
+
+  rules:
+    name: Vue rules
+    if: inputs.rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Get vue-skills-ci
+        uses: actions/checkout@v7
+        with:
+          repository: KIMJINWOO4/vue-skills-ci
+          ref: ${{ inputs.rules-ref }}
+          path: .vue-skills-ci
+
+      - name: Check Vue rules
+        env:
+          APP_DIR: ${{ inputs.working-directory }}
+          FAIL_ON: ${{ inputs.fail-on }}
+          BASELINE: ${{ inputs.baseline }}
+        run: |
+          args=(check "$APP_DIR" --format github --fail-on "$FAIL_ON")
+          if [ -n "$BASELINE" ]; then args+=(--baseline "$BASELINE"); fi
+          node .vue-skills-ci/src/cli.mjs "${args[@]}"

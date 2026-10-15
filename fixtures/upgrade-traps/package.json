@@ -1,0 +1,14 @@
+{
+  "name": "upgrade-traps",
+  "private": true,
+  "dependencies": {
+    "@vueuse/core": "^15.0.0",
+    "nuxt": "^4.6.1",
+    "pinia": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4",
+    "vue-tsc": "^3.3.13"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "vue-skills-ci",
+  "version": "1.0.0",
+  "description": "CI rules distilled from vue-skills: catch Vue, Nuxt and toolchain upgrade traps, SSR state leaks and exposed secrets in pull requests",
+  "type": "module",
+  "license": "MIT",
+  "author": "Jinwoo Kim (https://github.com/KIMJINWOO4)",
+  "homepage": "https://github.com/KIMJINWOO4/vue-skills-ci#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KIMJINWOO4/vue-skills-ci.git"
+  },
+  "keywords": ["vue", "nuxt", "vite", "vitest", "pinia", "vueuse", "ci", "github-action", "lint", "sarif", "agent-skills"],
+  "bin": {
+    "vue-skills-ci": "src/cli.mjs"
+  },
+  "files": ["src", "action.yml", "skills"],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check:examples": "node src/cli.mjs check fixtures/upgrade-traps --fail-on never",
+    "docs": "node scripts/gen-docs.mjs"
+  }
+}
