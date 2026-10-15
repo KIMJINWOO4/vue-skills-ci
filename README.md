@@ -9,6 +9,17 @@ A ready-made GitHub Actions CI for Vue and Nuxt projects, plus 19 checks for the
 
 Every rule links to the guide in [vue-skills](https://github.com/KIMJINWOO4/vue-skills) that explains the problem, so a person or an AI agent can go from a red check to the fix in one click.
 
+## Why run it in CI
+
+The releases since July 2026 changed a lot at once: TypeScript 7, Pinia 4, Vitest 5, VueUse 15, Vite 8.3, Nuxt 4.6 and the Vue 3.6 release candidates. Most projects meet these changes in a dependency pull request, and that pull request is where this check runs.
+
+- Some of these problems pass the build, the tests and ESLint. A secret behind a `VITE_` prefix ships to every visitor. A module-level `ref` in a Nuxt composable works in development and leaks one user's data into another user's page under real traffic. A destructured Pinia store compiles fine and stops updating the UI.
+- Others fail with an error that does not say why. vue-tsc on TypeScript 7 stops with an exports error about `./lib/tsc`. Vitest 5 throws on a `vi.mock` inside a `describe`. The annotation names the cause, the fix and the guide, on the line that needs to change.
+- Renovate and Dependabot open the major bumps for you. When `typescript` goes to 7 or `@vueuse/core` to 15, the check on that pull request points out what else has to change before you merge it.
+- AI coding assistants learned from documentation older than these releases, so they can still write `templateRef`, `describe.sequential` or guards that call `next()`. The rules catch that in review instead of in production.
+- It is cheap to run. The rule job needs no install, no secrets and only read access, finishes in a few seconds, and runs next to your build.
+- You can add it to an old codebase today. A [baseline](#existing-projects) records the current findings, so only new problems fail the check.
+
 ## Use the whole CI
 
 Create `.github/workflows/ci.yml` in your project:
@@ -229,6 +240,16 @@ Silence a single line with a comment above it: `// vue-skills-ci-disable-next-li
 ## The example app
 
 [`example/`](example) is a small todo app in the create-vue layout: Vue 3.5, Pinia 4, VueUse 15, Vite 8, Vitest 5 with Vue Test Utils, ESLint with eslint-plugin-vue, and vue-tsc on TypeScript 6. This repository's [CI](.github/workflows/ci.yml) calls the reusable workflow on it for every push and pull request, the same way your project would. If you want to see exactly what the workflow runs, open the latest run of the `Example app` job.
+
+## Badge
+
+If the check runs in your project, you can say so in your README:
+
+[![checked by vue-skills-ci](https://img.shields.io/badge/checked%20by-vue--skills--ci-42b883)](https://github.com/KIMJINWOO4/vue-skills-ci)
+
+```md
+[![checked by vue-skills-ci](https://img.shields.io/badge/checked%20by-vue--skills--ci-42b883)](https://github.com/KIMJINWOO4/vue-skills-ci)
+```
 
 ## Contributing
 
